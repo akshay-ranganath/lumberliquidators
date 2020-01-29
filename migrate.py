@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 
 logger = logging.getLogger('root')
 FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ]%(levelname)s: %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 videos = []
 images = []
@@ -42,24 +42,31 @@ def migrate_object(object_name, object_type="image"):
             unique_filename=False,
             overwrite=False
         )
-        print(f"{object_name},Success")
+        print(f"{object_name},{object_type},Success")
     except Exception as e:
-        print(f"{object_name},Fail,{e}")
+        print(f"{object_name},{object_type},Fail,{e}")
     
 
 
 if __name__=="__main__":
+
+    unkowns = {'ImageSet', 'Ecatalog', 'LegacyVideoSet', 'Master Video File', 'MediaSet', 'SpinSet2d', 'Template', 'Viewer Preset', 'TEMPLATE', 'ECatalog','TEST_VID_SET'}
     with open("test.csv") as csvfile:
         s3objects = csv.reader(csvfile)
-        for s3object in s3objects:
-            if s3object[1]=="IMAGE":
-                images.append(s3object[0])
-            elif s3object[1]=="Video":
-                videos.append(s3object[0])
+        for (object_name, object_type) in s3objects:
+            if object_type=="IMAGE" or object_type=="Animated GIF":
+                images.append(object_name)
+            elif object_type=="Video":
+                videos.append(object_name)
             else:
-                others.append(s3object[0])
+                if object_type not in unkowns:
+                    print(object_type, object_name)
+                    others.append(object_name)
 
-                      
+        logging.info(f"Migrating {len(images)} images.")
+        logging.info(f"Migrating {len(videos)} videos.")
+        logging.info(f"Migrating {len(others)} raw files.")
+        
         with PoolExecutor(max_workers=20) as executor:
             # migrate images  
             for _ in executor.map(migrate_image, images):
@@ -70,5 +77,6 @@ if __name__=="__main__":
             # migrate raw files
             for _ in executor.map(migrate_raw_file, others):
                 pass
+        
 
         

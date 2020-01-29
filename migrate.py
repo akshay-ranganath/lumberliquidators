@@ -24,9 +24,6 @@ def migrate_image(image_name):
 def migrate_video(video_name):
     migrate_object(video_name, "video")
 
-def migrate_raw_file(raw_file_name):
-    migrate_object(raw_file_name, "raw")
-
 def migrate_object(object_name, object_type="image"):
     object_url = ""    
     if object_type == "image" or object_type == "video":
@@ -47,25 +44,18 @@ def migrate_object(object_name, object_type="image"):
         print(f"{object_name},{object_type},Fail,{e}")
     
 
-
 if __name__=="__main__":
-
-    unkowns = {'ImageSet', 'Ecatalog', 'LegacyVideoSet', 'Master Video File', 'MediaSet', 'SpinSet2d', 'Template', 'Viewer Preset', 'TEMPLATE', 'ECatalog','TEST_VID_SET'}
+    
     with open("test.csv") as csvfile:
         s3objects = csv.reader(csvfile)
         for (object_name, object_type) in s3objects:
             if object_type=="IMAGE" or object_type=="Animated GIF":
                 images.append(object_name)
             elif object_type=="Video":
-                videos.append(object_name)
-            else:
-                if object_type not in unkowns:
-                    print(object_type, object_name)
-                    others.append(object_name)
+                videos.append(object_name)            
 
         logging.info(f"Migrating {len(images)} images.")
-        logging.info(f"Migrating {len(videos)} videos.")
-        logging.info(f"Migrating {len(others)} raw files.")
+        logging.info(f"Migrating {len(videos)} videos.")        
         
         with PoolExecutor(max_workers=20) as executor:
             # migrate images  
@@ -74,9 +64,3 @@ if __name__=="__main__":
             # migrate videos      
             for _ in executor.map(migrate_video, videos):
                 pass
-            # migrate raw files
-            for _ in executor.map(migrate_raw_file, others):
-                pass
-        
-
-        
